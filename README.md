@@ -68,29 +68,7 @@ rails server
 
 6. Open your browser:
    - For local development: navigate to `http://localhost:3000`
-   - If using ngrok: navigate to your ngrok URL (e.g., `https://your-ngrok-domain.ngrok-free.app`)
 
-## Using with ngrok
-
-To expose your application to the internet (useful for testing OAuth flows):
-
-1. Install ngrok: [https://ngrok.com/download](https://ngrok.com/download)
-
-2. Run ngrok pointing to your Rails server port:
-```bash
-ngrok http 3000
-```
-
-3. Copy the HTTPS URL provided by ngrok (e.g., `https://07ba-24-245-153-192.ngrok-free.app`)
-
-4. Add this URL with the callback path to your Google OAuth 2.0 credentials:
-   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
-   - Navigate to "APIs & Services" > "Credentials"
-   - Edit your OAuth 2.0 Client ID
-   - Add a new Authorized redirect URI: `https://your-ngrok-domain.ngrok-free.app/auth/google_oauth2/callback`
-   - Save your changes
-
-5. Access your application via the ngrok URL
 
 ## Application Structure
 
