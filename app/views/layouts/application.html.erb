@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Planning Center YouTube</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <script>
+        const CHANNEL_ID = "<%= params[:channel_id] %>"
+    </script>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <%= link_to "Planning Center YouTube", root_path, class: "navbar-brand" %>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <% if user_signed_in? %>
+              <li class="nav-item">
+                <%= link_to "YouTube", channels_path, class: "nav-link" %>
+              </li>
+              <li class="nav-item">
+                <%= link_to "Planning Center", planning_center_service_types_path, class: "nav-link" %>
+              </li>
+              <li class="nav-item">
+                <%= link_to "Sign Out", signout_path, class: "nav-link" %>
+              </li>
+            <% else %>
+              <li class="nav-item">
+                <%= link_to "Sign In", signin_path, class: "nav-link" %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    
+    <% if notice %>
+      <div class="alert alert-success alert-dismissible fade show m-0">
+        <%= notice %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    <% end %>
+    
+    <% if alert %>
+      <div class="alert alert-danger alert-dismissible fade show m-0">
+        <%= alert %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    <% end %>
+
+    <%= yield %>
+    
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript for Planning Center Integration -->
+    <script>
+      // Convert UTC times to local timezone
+      function convertTimesToLocalTimezone() {
+        document.querySelectorAll('.stream-time').forEach(element => {
+          const utcTime = element.getAttribute('data-utc');
+          if (utcTime) {
+            const date = new Date(utcTime);
+            const options = { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            };
+            element.textContent = date.toLocaleDateString(undefined, options);
+            element.title = `UTC: ${utcTime}`;
+          }
+        });
+      }
+      
+      function setupSyncButtons() {
+        const syncButtons = document.querySelectorAll('.sync-plan-info');
+        
+        syncButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            const planId = this.getAttribute('data-plan-id');
+            const serviceTypeId = this.getAttribute('data-service-type-id');
+            const videoId = this.getAttribute('data-video-id');
+            const channelId = CHANNEL_ID;
+            
+            // Disable button and show loading state
+            this.textContent = 'Syncing...';
+            this.disabled = true;
+            
+            // Create the request token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            // Make AJAX request to sync data from the plan
+            fetch(`/channels/${channelId}/videos/${videoId}/sync_from_plan`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+              },
+              body: JSON.stringify({
+                plan_id: planId,
+                service_type_id: serviceTypeId
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                // Update the form fields with the new values
+                const titleField = document.querySelector('#video_title');
+                if (titleField && data.new_title) {
+                  titleField.value = data.new_title;
+                }
+                
+                const descriptionField = document.querySelector('#video_description');
+                if (descriptionField && data.new_description) {
+                  descriptionField.value = data.new_description;
+                }
+                
+                // Provide feedback that the sync was successful
+                this.textContent = 'Synced!';
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-success');
+                
+                // Show success message
+                const alertContainer = document.createElement('div');
+                alertContainer.className = 'alert alert-success alert-dismissible fade show mt-2';
+                
+                let message = data.message;
+                if (data.thumbnail_updated) {
+                  message += ` ${data.thumbnail_message}`;
+                } else if (data.thumbnail_message) {
+                  message += ` ${data.thumbnail_message}`;
+                }
+                
+                alertContainer.innerHTML = `
+                  ${message}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                this.parentNode.appendChild(alertContainer);
+                
+                setTimeout(() => {
+                  // Reset button after 2 seconds
+                  this.textContent = 'Sync from Plan';
+                  this.classList.remove('btn-success');
+                  this.classList.add('btn-outline-primary');
+                  this.disabled = false;
+                  
+                  // Remove alert after 5 seconds
+                  setTimeout(() => {
+                    if (alertContainer.parentNode) {
+                      alertContainer.parentNode.removeChild(alertContainer);
+                    }
+                  }, 3000);
+                }, 2000);
+              } else {
+                // Show error message
+                this.textContent = 'Failed!';
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-danger');
+                
+                const alertContainer = document.createElement('div');
+                alertContainer.className = 'alert alert-danger alert-dismissible fade show mt-2';
+                alertContainer.innerHTML = `
+                  ${data.message || 'Failed to sync from plan.'}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                this.parentNode.appendChild(alertContainer);
+                
+                setTimeout(() => {
+                  // Reset button after 2 seconds
+                  this.textContent = 'Sync from Plan';
+                  this.classList.remove('btn-danger');
+                  this.classList.add('btn-outline-primary');
+                  this.disabled = false;
+                }, 2000);
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              
+              // Show error message
+              this.textContent = 'Error!';
+              this.classList.remove('btn-outline-primary');
+              this.classList.add('btn-danger');
+              
+              setTimeout(() => {
+                this.textContent = 'Sync from Plan';
+                this.classList.remove('btn-danger');
+                this.classList.add('btn-outline-primary');
+                this.disabled = false;
+              }, 2000);
+            });
+          });
+        });
+      }
+      
+      // Setup for Turbo Drive
+      document.addEventListener('turbo:load', function() {
+        setupSyncButtons();
+        convertTimesToLocalTimezone();
+      });
+      
+      // Fallback for non-Turbo Drive environments
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Turbo === 'undefined') {
+          setupSyncButtons();
+          convertTimesToLocalTimezone();
+        }
+      });
+    </script>
+  </body>
+</html>

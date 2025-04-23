@@ -1,0 +1,160 @@
+<div class="container mt-4">
+  <h1>Channel Videos</h1>
+  
+  <div id="privacy-update-alert" class="alert alert-success alert-dismissible fade d-none" role="alert">
+    <span id="privacy-update-message"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  
+  <% if @videos.any? %>
+    <div class="row mt-4">
+      <% @videos.each do |video| %>
+        <div class="col-md-6 mb-4">
+          <div class="card h-100">
+            <% thumbnail = video.snippet.thumbnails.maxres || video.snippet.thumbnails.standard || video.snippet.thumbnails.high %>
+            <% if thumbnail %>
+              <img src="<%= thumbnail.url %>" class="card-img-top" alt="<%= video.snippet.title %>">
+            <% end %>
+            
+            <div class="card-body">
+              <h5 class="card-title">
+                <%= video.snippet.title %>
+                <% if video.status&.privacy_status == 'private' %>
+                  <span class="badge bg-danger ms-1">PRIVATE</span>
+                <% end %>
+              </h5>
+              <p class="card-text text-muted">
+                <small>
+                  <% if video.to_h.dig(:live_streaming_details, :actual_start_time) %>
+                    Streamed: <span class="stream-time" data-utc="<%= Time.parse(video.to_h.dig(:live_streaming_details, :actual_start_time)).utc.iso8601 %>">
+                      <%= Time.parse(video.to_h.dig(:live_streaming_details, :actual_start_time)).strftime("%B %d, %Y") %>
+                    </span>
+                  <% else %>
+                    Published: <%= Time.parse(video.snippet.published_at).strftime("%B %d, %Y") %>
+                  <% end %>
+                  <% if video.content_details&.duration %>
+                    • <%= format_youtube_duration(video.content_details.duration) %>
+                  <% end %>
+                  <% if video.statistics %>
+                    • <%= number_with_delimiter(video.statistics.view_count) %> views
+                  <% end %>
+                </small>
+              </p>
+              <p class="card-text"><%= truncate(video.snippet.description, length: 150) %></p>
+              
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                <a href="https://youtube.com/watch?v=<%= video.id %>" target="_blank" class="btn btn-sm btn-outline-primary">View on YouTube</a>
+                <%= link_to "Edit Details", edit_channel_video_path(@channel_id, video.id), class: "btn btn-sm btn-primary" %>
+                
+                <%= button_to toggle_privacy_channel_video_path(@channel_id, video.id), 
+                            method: :post, 
+                            class: "toggle-privacy-btn btn btn-sm #{video.status&.privacy_status == 'private' ? 'btn-success' : 'btn-outline-danger'}",
+                            form: { data: { video_id: video.id, turbo: false } } do %>
+                  <%= video.status&.privacy_status == 'private' ? 'Make Public' : 'Make Private' %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="alert alert-info">
+      <p>No videos found for this channel.</p>
+    </div>
+  <% end %>
+  
+  <div class="mt-3">
+    <%= link_to "Back to Channels", channels_path, class: "btn btn-secondary" %>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Handle toggle privacy buttons
+      document.querySelectorAll('.toggle-privacy-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          const form = this.closest('form');
+          const videoId = form.dataset.videoId;
+          const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+          
+          // Disable button and show loading
+          this.disabled = true;
+          const originalText = this.innerHTML;
+          this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+          
+          // Make the AJAX request
+          fetch(form.action, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken,
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ id: videoId })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Update button style and text based on new status
+              if (data.privacy_status === 'private') {
+                this.classList.remove('btn-outline-danger');
+                this.classList.add('btn-success');
+                this.innerHTML = 'Make Public';
+                
+                // Add PRIVATE badge to title if not already present
+                const titleElement = this.closest('.card-body').querySelector('.card-title');
+                if (!titleElement.querySelector('.badge')) {
+                  const badge = document.createElement('span');
+                  badge.className = 'badge bg-danger ms-1';
+                  badge.textContent = 'PRIVATE';
+                  titleElement.appendChild(badge);
+                }
+              } else {
+                this.classList.remove('btn-success');
+                this.classList.add('btn-outline-danger');
+                this.innerHTML = 'Make Private';
+                
+                // Remove PRIVATE badge from title
+                const titleElement = this.closest('.card-body').querySelector('.card-title');
+                const badge = titleElement.querySelector('.badge');
+                if (badge) {
+                  badge.remove();
+                }
+              }
+              
+              // Show success message
+              const alertElement = document.getElementById('privacy-update-alert');
+              const messageElement = document.getElementById('privacy-update-message');
+              messageElement.textContent = `Video privacy status updated to ${data.privacy_status}`;
+              alertElement.classList.remove('d-none');
+              alertElement.classList.add('show');
+              
+              // Hide message after 3 seconds
+              setTimeout(() => {
+                alertElement.classList.remove('show');
+                setTimeout(() => {
+                  alertElement.classList.add('d-none');
+                }, 300);
+              }, 3000);
+            } else {
+              // Show error
+              this.innerHTML = originalText;
+              alert('Failed to update privacy status: ' + (data.error || 'Unknown error'));
+            }
+            
+            // Re-enable button
+            this.disabled = false;
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            this.innerHTML = originalText;
+            this.disabled = false;
+            alert('An error occurred while updating the privacy status.');
+          });
+        });
+      });
+    });
+  </script>
+</div>
