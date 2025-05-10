@@ -1,7 +1,7 @@
 # config valid for current version and patch releases of Capistrano
 lock "~> 3.19.2"
 
-set :application, "PlanningCenterYoutube"
+set :application, "PlanningDistro"
 set :repo_url, "git@github.com:bemky/planning-center-youtube.git"
 
 # Default branch is :master

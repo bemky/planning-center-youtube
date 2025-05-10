@@ -1,6 +1,6 @@
-# Planning Center YouTube Manager
+# PlanningDistro
 
-A Rails application that allows users to authenticate with Google, view their YouTube channels, list their live videos, and edit video titles and descriptions.
+A Rails application that allows users to integrate Planning Center Services with YouTube, manage their live videos, and synchronize content between platforms.
 
 ## Features
 
@@ -22,8 +22,8 @@ A Rails application that allows users to authenticate with Google, view their Yo
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/planning-center-youtube.git
-cd planning-center-youtube
+git clone https://github.com/yourusername/planning-distro.git
+cd planning-distro
 ```
 
 2. Install dependencies:

@@ -3,6 +3,7 @@ Rails.application.routes.draw do
 
   # Root path
   root "home#index"
+  get '/test_auth', to: 'home#test_auth'
 
   # Authentication routes
   get '/auth/:provider/callback', to: 'sessions#create'

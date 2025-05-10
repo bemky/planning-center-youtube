@@ -22,4 +22,4 @@ namespace :assets do
 
 end
 
-after 'deploy:migrate', 'assets:precompile'
+# after 'deploy:migrate', 'assets:primaryecompile'

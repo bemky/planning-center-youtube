@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Starting Planning Center YouTube Manager..."
+echo "Starting PlanningDistro..."
 echo "Make sure you have set your Google API credentials in Rails credentials."
 echo "You can get these credentials from https://console.developers.google.com/"
 echo "To edit credentials: rails credentials:edit"
